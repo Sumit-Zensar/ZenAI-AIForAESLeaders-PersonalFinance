@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createExpense, updateExpense, getCategories, createCategory, predictCategory } from '../services/api';
+import { createExpense, updateExpense, getCategories, createCategory, predictCategory, confirmCategory, checkRecurring, confirmRecurring } from '../services/api';
 
 const ExpenseForm = ({ onExpenseAdded, editingExpense, onCancelEdit }) => {
     const [amount, setAmount] = useState('');
@@ -10,6 +10,9 @@ const ExpenseForm = ({ onExpenseAdded, editingExpense, onCancelEdit }) => {
     const [categories, setCategories] = useState([]);
     const [newCategory, setNewCategory] = useState('');
     const [showNewCategory, setShowNewCategory] = useState(false);
+    const [suggestion, setSuggestion] = useState(null);
+    const [suggestedCategoryId, setSuggestedCategoryId] = useState(null);
+    const [recurringSuggestion, setRecurringSuggestion] = useState(null);
 
     useEffect(() => {
         fetchCategories();
@@ -37,7 +40,7 @@ const ExpenseForm = ({ onExpenseAdded, editingExpense, onCancelEdit }) => {
 
     const fetchCategories = async () => {
         try {
-            const response = await getCategories();
+            const response = await getCategories('expense');
             setCategories(response.data);
         } catch (error) {
             console.error("Error fetching categories", error);
@@ -64,17 +67,57 @@ const ExpenseForm = ({ onExpenseAdded, editingExpense, onCancelEdit }) => {
         if (!editingExpense && value.length > 2) {
             try {
                 const response = await predictCategory({ merchant: value });
-                if (response.data.category) {
-                    const cat = categories.find(c => c.name.toLowerCase() === response.data.category.toLowerCase());
+                const data = response.data || {};
+                setSuggestion(data);
+                if (data && data.category && data.confidence && data.confidence >= 0.6) {
+                    const cat = categories.find(c => c.name.toLowerCase() === data.category.toLowerCase());
                     if (cat) {
                         setCategoryId(cat.id);
+                        setSuggestedCategoryId(cat.id);
                     }
+                } else {
+                    setSuggestedCategoryId(null);
                 }
             } catch (error) {
                 console.error("Error predicting category", error);
             }
         }
     };
+
+    useEffect(() => {
+        const check = async () => {
+            if (!merchant || !amount) return;
+            try {
+                const resp = await checkRecurring({ merchant, amount: parseFloat(amount) });
+                setRecurringSuggestion(resp.data || null);
+            } catch (e) {
+                console.error('Error checking recurring', e);
+            }
+        };
+        check();
+    }, [merchant, amount]);
+
+    // Remember corrections: if user changes category manually after suggestion, save mapping
+    useEffect(() => {
+        const rememberCorrection = async () => {
+            if (!suggestion || !merchant) return;
+            if (!suggestion.category) return;
+            // if user selected a different category than suggested
+            const suggestedName = suggestion.category.toLowerCase();
+            const selected = categories.find(c => c.id === parseInt(categoryId));
+            if (selected && selected.name.toLowerCase() !== suggestedName) {
+                try {
+                    await confirmCategory({ merchant, category: selected.name, canonical: suggestion.normalized_merchant });
+                    // clear suggestion after persisting correction
+                    setSuggestion(null);
+                    setSuggestedCategoryId(null);
+                } catch (err) {
+                    console.error('Error saving correction', err);
+                }
+            }
+        };
+        rememberCorrection();
+    }, [categoryId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -125,6 +168,20 @@ const ExpenseForm = ({ onExpenseAdded, editingExpense, onCancelEdit }) => {
                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
                     </select>
+                    {suggestion && suggestedCategoryId && (
+                        <div style={{ alignSelf: 'center' }} className="badge">Suggested: {suggestion.category} ({Math.round((suggestion.confidence||0)*100)}%)</div>
+                    )}
+                    {recurringSuggestion && recurringSuggestion.is_recurring && (
+                        <div style={{ alignSelf: 'center', marginLeft: '0.5rem' }}>
+                            <div className="badge">Recurring ({Math.round((recurringSuggestion.confidence||0)*100)}%)</div>
+                            <button type="button" className="btn" onClick={async () => {
+                                try {
+                                    await confirmRecurring({ merchant, category: suggestion?.category || null, average_amount: parseFloat(amount), interval_days: recurringSuggestion.avg_interval_days });
+                                    setRecurringSuggestion(null);
+                                } catch (err) { console.error(err); }
+                            }}>Confirm Recurring</button>
+                        </div>
+                    )}
                     <button type="button" className="btn" onClick={() => setShowNewCategory(!showNewCategory)}>
                         {showNewCategory ? 'Cancel' : '+'}
                     </button>

@@ -3,6 +3,7 @@ import { getExpenses, deleteExpense, getCategories } from '../services/api';
 import ExpenseForm from './ExpenseForm';
 import CategoryManager from './CategoryManager';
 import { useCurrency } from '../context/CurrencyContext';
+import { listAnomalies, dismissAnomaly, snoozeAnomaly } from '../services/api';
 
 const Expenses = () => {
     const [expenses, setExpenses] = useState([]);
@@ -18,6 +19,7 @@ const Expenses = () => {
         merchant: ''
     });
     const [categories, setCategories] = useState([]);
+    const [anomalies, setAnomalies] = useState({});
 
     useEffect(() => {
         fetchCategories();
@@ -25,7 +27,17 @@ const Expenses = () => {
 
     useEffect(() => {
         fetchExpenses();
+        fetchAnomalies();
     }, [filters, showCategoryManager]);
+
+    const fetchAnomalies = async () => {
+        try {
+            const resp = await listAnomalies();
+            const map = {};
+            (resp.data || []).forEach(a => { if (a.expense_id) map[a.expense_id] = a; });
+            setAnomalies(map);
+        } catch (e) { console.error(e); }
+    };
 
     const fetchCategories = async () => {
         try {
@@ -159,6 +171,15 @@ const Expenses = () => {
                                                 <button className="btn btn-success" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={() => handleEdit(expense)}>Edit</button>
                                                 <button className="btn btn-danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={() => handleDelete(expense.id)}>Delete</button>
                                             </div>
+                                            {anomalies[expense.id] && (
+                                                <div style={{ marginTop: '0.5rem' }}>
+                                                    <div className="badge" style={{ backgroundColor: '#f59e0b' }}>Anomaly</div>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                                        <button className="btn" onClick={async () => { await snoozeAnomaly(anomalies[expense.id].id, 7); fetchAnomalies(); }}>Snooze</button>
+                                                        <button className="btn btn-danger" onClick={async () => { await dismissAnomaly(anomalies[expense.id].id); fetchAnomalies(); }}>Dismiss</button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

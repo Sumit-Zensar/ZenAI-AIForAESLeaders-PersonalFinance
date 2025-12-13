@@ -18,8 +18,11 @@ def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_
     return db_category
 
 @router.get("/", response_model=List[schemas.Category])
-def read_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    categories = db.query(models.Category).offset(skip).limit(limit).all()
+def read_categories(type: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    query = db.query(models.Category)
+    if type:
+        query = query.filter(models.Category.type == type)
+    categories = query.offset(skip).limit(limit).all()
     return categories
 
 @router.put("/{category_id}", response_model=schemas.Category)

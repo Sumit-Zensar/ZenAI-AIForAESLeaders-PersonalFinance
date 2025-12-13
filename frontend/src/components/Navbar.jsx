@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, DollarSign, PieChart, Target } from 'lucide-react';
+import { LayoutDashboard, DollarSign, PieChart, Target, Wallet } from 'lucide-react';
 import { useCurrency } from '../context/CurrencyContext';
 import '../App.css';
 
@@ -26,7 +26,13 @@ const Navbar = () => {
                         <PieChart size={20} /> Income
                     </Link>
                     <Link to="/budgets" className="nav-link">
-                        <Target size={20} /> Budgets
+                        <Wallet size={20} /> Budgets
+                    </Link>
+                    <Link to="/goals" className="nav-link">
+                        <Target size={20} /> Goals
+                    </Link>
+                    <Link to="/reports" className="nav-link">
+                        <PieChart size={20} /> Reports
                     </Link>
 
                     <select

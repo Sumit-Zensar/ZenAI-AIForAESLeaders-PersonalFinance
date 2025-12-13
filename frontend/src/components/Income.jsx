@@ -29,7 +29,7 @@ const Income = () => {
 
     const fetchCategories = async () => {
         try {
-            const response = await getCategories();
+            const response = await getCategories('income');
             setCategories(response.data);
         } catch (error) {
             console.error("Error fetching categories", error);

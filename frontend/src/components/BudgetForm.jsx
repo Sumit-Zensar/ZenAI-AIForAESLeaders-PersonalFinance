@@ -3,6 +3,8 @@ import { createBudget, updateBudget, getCategories } from '../services/api';
 
 const BudgetForm = ({ onBudgetAdded, editingBudget, onCancelEdit }) => {
   const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState('');
+  const [showNewCategory, setShowNewCategory] = useState(false);
   const [formData, setFormData] = useState({
     amount: '',
     period_type: 'monthly',
@@ -34,10 +36,23 @@ const BudgetForm = ({ onBudgetAdded, editingBudget, onCancelEdit }) => {
 
   const fetchCategories = async () => {
     try {
-      const response = await getCategories();
+      const response = await getCategories('expense');
       setCategories(response.data);
     } catch (error) {
       console.error("Error fetching categories", error);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategory) return;
+    try {
+      const response = await createCategory({ name: newCategory, type: 'expense' });
+      setCategories([...categories, response.data]);
+      setFormData({ ...formData, category_id: response.data.id });
+      setNewCategory('');
+      setShowNewCategory(false);
+    } catch (error) {
+      console.error('Error creating category', error);
     }
   };
 
@@ -90,6 +105,21 @@ const BudgetForm = ({ onBudgetAdded, editingBudget, onCancelEdit }) => {
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
+          <button type="button" className="btn" onClick={() => setShowNewCategory(!showNewCategory)} style={{ marginLeft: '0.5rem' }}>
+            {showNewCategory ? 'Cancel' : '+'}
+          </button>
+          {showNewCategory && (
+            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="New Category Name"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+              />
+              <button type="button" className="btn btn-primary" onClick={handleCreateCategory}>Save</button>
+            </div>
+          )}
         </div>
 
         <div className="form-group">

@@ -5,6 +5,8 @@ import Dashboard from './components/Dashboard';
 import Expenses from './components/Expenses';
 import Income from './components/Income';
 import Budgets from './pages/Budgets';
+import Goals from './components/Goals';
+import Reports from './pages/Reports';
 import { CurrencyProvider } from './context/CurrencyContext';
 import './App.css';
 
@@ -20,6 +22,8 @@ function App() {
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/income" element={<Income />} />
               <Route path="/budgets" element={<Budgets />} />
+              <Route path="/goals" element={<Goals />} />
+              <Route path="/reports" element={<Reports />} />
             </Routes>
           </div>
         </div>

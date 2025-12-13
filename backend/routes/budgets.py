@@ -19,6 +19,14 @@ def create_budget(budget: schemas.BudgetCreate, db: Session = Depends(get_db)):
     # Actually, let's just create a new one for now or update if ID is provided (but this is create).
     # A better approach for MVP: If a budget exists for this category (or overall) with same period_type, update it.
     
+    # Validate category if provided: only expense categories allowed for budgets
+    if budget.category_id:
+        cat = db.query(models.Category).filter(models.Category.id == budget.category_id).first()
+        if not cat:
+            raise HTTPException(status_code=400, detail="Category not found")
+        if cat.type != 'expense':
+            raise HTTPException(status_code=400, detail="Budgets can only be assigned to expense categories")
+
     existing_budget = db.query(models.Budget).filter(
         models.Budget.category_id == budget.category_id,
         models.Budget.period_type == budget.period_type
@@ -42,6 +50,13 @@ def update_budget(budget_id: int, budget: schemas.BudgetCreate, db: Session = De
     db_budget = db.query(models.Budget).filter(models.Budget.id == budget_id).first()
     if not db_budget:
         raise HTTPException(status_code=404, detail="Budget not found")
+    # Validate category if provided: only expense categories allowed for budgets
+    if budget.category_id:
+        cat = db.query(models.Category).filter(models.Category.id == budget.category_id).first()
+        if not cat:
+            raise HTTPException(status_code=400, detail="Category not found")
+        if cat.type != 'expense':
+            raise HTTPException(status_code=400, detail="Budgets can only be assigned to expense categories")
     
     db_budget.amount = budget.amount
     db_budget.period_type = budget.period_type
